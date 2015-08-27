@@ -5,7 +5,7 @@ SynOrF.py is a python script that determines shared orthologs between two bacter
 
 As an input the amino acid sequence (.faa file) sequence and a gff3 file of both genomes is needed.
 
-Requirements:
+#Requirements:
 python (Was tested with version 2.7)
 Blast+ (Was tested with version 2.2.28+, available ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/)
 NetworkX (Was tested with version 1.9.1, available https://networkx.github.io/)
