@@ -19,12 +19,13 @@ def main():
 	run_blast(inputOptions)
 	proteins=read_blast(inputOptions)
 	proteins=construct_protein_list(inputOptions[3], proteins)
-
+	
 	proteins_query=read_proteins(inputOptions[0])
 	proteins_query=construct_protein_list(inputOptions[2], proteins_query)	
 
 	genome_graph=construct_reference_graph(proteins)
 	genome_graph_query=construct_reference_graph(proteins_query)
+
 
 	selected_protein_pairs=select_proteins(proteins, proteins_query, genome_graph, genome_graph_query)
 
@@ -89,7 +90,7 @@ def select_clusters_for_length(selected_protein_pairs, genome_graph, genome_grap
 				if len(query_cluster)>4:
 					for query_node in query_cluster:
 						print query_nodes[query_node]+"\t"+query_node
-	#return connection		
+			
 
 	
 
@@ -108,12 +109,12 @@ def select_proteins(proteins, proteins_query, genome_graph, genome_graph_query):
 		for neighbor in genome_graph.neighbors(protein):
 			for blast_hit in proteins[protein].valid_blast_hits:
 				for blast_hit_neighbor in proteins[neighbor].valid_blast_hits:
-					
-					if len(nx.shortest_path(genome_graph_query,blast_hit.name,blast_hit_neighbor.name))==2:	
-						if blast_hit.name in orthologues_of_proteins[protein]:
-							orthologues_of_proteins[protein][blast_hit.name]+=1
-						else:
-							orthologues_of_proteins[protein][blast_hit.name]=1
+					if nx.has_path(genome_graph_query,blast_hit.name,blast_hit_neighbor.name):
+						if len(nx.shortest_path(genome_graph_query,blast_hit.name,blast_hit_neighbor.name))==2:	
+							if blast_hit.name in orthologues_of_proteins[protein]:
+								orthologues_of_proteins[protein][blast_hit.name]+=1
+							else:
+								orthologues_of_proteins[protein][blast_hit.name]=1
 
 
 		sorted_orthologues=sorted(orthologues_of_proteins[protein].iteritems(), key=operator.itemgetter(1),reverse=True)
@@ -149,26 +150,39 @@ def select_proteins(proteins, proteins_query, genome_graph, genome_graph_query):
 
 def construct_reference_graph(proteins):
 
+	graph=nx.Graph()
+
+	
 	proteins_ordered=sorted(proteins.values(), key=lambda Protein: Protein.start)	
 
-	graph=nx.Graph()
-	for i in range(0,len(proteins_ordered)):
-		k=i+1
-		z=i+2
-		l=i+3
-		if i == len(proteins_ordered)-1:
-			k=0
-			z=1
-			l=2
-		if i == len(proteins_ordered)-2:
-			z=0
-			l=1	
-		if i == len(proteins_ordered)-3:
-			l=0
-	
-		graph.add_edge(proteins_ordered[i].name,proteins_ordered[k].name, weight=1)
-		graph.add_edge(proteins_ordered[i].name,proteins_ordered[z].name, weight=0.5)
-		graph.add_edge(proteins_ordered[i].name,proteins_ordered[l].name, weight=0.25)
+	all_contigs=set([proteins[n].contig for n in proteins.keys()])
+	for contig in all_contigs:
+		proteins_ordered_contig=list()
+		for protein in proteins_ordered:
+			if protein.contig==contig:
+				proteins_ordered_contig.append(protein)
+
+		for i in range(0,len(proteins_ordered_contig)):
+			k=i+1
+			z=i+2
+			l=i+3
+			
+			if i == len(proteins_ordered_contig)-3:
+				k=0
+				z=1
+				l=2
+			elif i == len(proteins_ordered_contig)-2:
+				k=0
+				z=0
+				l=1	
+			elif i == len(proteins_ordered_contig)-1:
+				k=0
+				z=0			
+				l=0
+
+			graph.add_edge(proteins_ordered_contig[i].name,proteins_ordered_contig[k].name, weight=1)
+			graph.add_edge(proteins_ordered_contig[i].name,proteins_ordered_contig[z].name, weight=0.5)
+			graph.add_edge(proteins_ordered_contig[i].name,proteins_ordered_contig[l].name, weight=0.25)
 	
 
 	return graph
@@ -187,6 +201,7 @@ def construct_protein_list(in_file, proteins):
 				protein.start=int(line.split("\t")[3])
 				protein.end=int(line.split("\t")[4])
 				protein.genome_length=genome_length
+				protein.contig=line.split("\t")[0]
 				if line.split("\t")[6]=="-":
 					protein.is_foreward=bool(0)
 
@@ -225,6 +240,7 @@ def read_blast(inputOptions):
 		proteins[line.split("\t")[0]].blast_hits.append(blast_hit)
 	
 	proteins=filter_blast(proteins)	
+
 	return proteins
 	
 def filter_blast(proteins):
@@ -243,8 +259,9 @@ def filter_blast(proteins):
 	
 def run_blast(inputOptions):
 	# runs the external blast search
-	os.system("makeblastdb -in "+inputOptions[0]+" -dbtype prot" + " > database_info")
-	os.system("blastp -query "+inputOptions[1]+" -db "+inputOptions[0]+" -outfmt 6 > result/"+inputOptions[4]+".blast.annot.tab")
+	os.system("mkdir -p result")
+	os.system("makeblastdb -in "+inputOptions[0]+" -dbtype prot -out result/reference" + " > database_info")
+	os.system("blastp -query "+inputOptions[1]+" -db result/reference -outfmt 6 > result/"+inputOptions[4]+".blast.annot.tab")
 
 def read_proteins(fasta_file):
 	# constructs protein objects out of fasta sequences
@@ -293,6 +310,7 @@ class Protein:
 		self.is_foreward=bool(1)
 		self.genome_length=0
 		self.edges=list()
+		self.contig=""
 
 class Blast_hit:
 	def __init__(self, name):
