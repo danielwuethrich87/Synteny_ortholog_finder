@@ -88,7 +88,7 @@ def select_clusters_for_length(selected_protein_pairs, genome_graph, genome_grap
 			
 			for query_cluster in nx.connected_components(valid_query_graph):
 				if len(query_cluster)>4:
-					for query_node in query_cluster:
+					for query_node in sorted(query_cluster):
 						print query_nodes[query_node]+"\t"+query_node
 			
 
@@ -180,9 +180,11 @@ def construct_reference_graph(proteins):
 				z=0			
 				l=0
 
-			graph.add_edge(proteins_ordered_contig[i].name,proteins_ordered_contig[k].name, weight=1)
-			graph.add_edge(proteins_ordered_contig[i].name,proteins_ordered_contig[z].name, weight=0.5)
 			graph.add_edge(proteins_ordered_contig[i].name,proteins_ordered_contig[l].name, weight=0.25)
+			graph.add_edge(proteins_ordered_contig[i].name,proteins_ordered_contig[z].name, weight=0.5)
+			graph.add_edge(proteins_ordered_contig[i].name,proteins_ordered_contig[k].name, weight=1)
+
+
 	
 
 	return graph
